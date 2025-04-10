@@ -1,15 +1,30 @@
-use serde::{ Deserialize, Serialize };
+use serde::Deserialize;
 
-#[derive(Serialize,Deserialize, Debug)]
+
+/// Config struct for the application
+/// This struct is used to load the config from the config file
+#[derive(Deserialize, Debug)]
+pub struct SerializeConfig {
+    pub background_color: Option<String>,
+    pub text_color: Option<String>,
+    pub border_color: Option<String>,
+    pub accent_color: Option<String>,
+    pub icon_theme: Option<String>
+}
+
+/// Config struct for the application.
+/// This struct is used for the rest of the application
+#[derive(Debug)]
 pub struct Config {
-    background_color: Option<String>,
-    text_color: Option<String>,
-    border_color: Option<String>,
-    accent_color: Option<String>,
+    pub background_color: String,
+    pub text_color: String,
+    pub border_color: String,
+    pub accent_color: String,
+    pub icon_theme: String
 }
 
 // Opem the config file from $HOME/.config/termrun/config.toml or $XDG_CONFIG_HOME/termrun/config.toml
-pub fn load_config(path: Option<String>) -> Result<Config, toml::de::Error> {
+pub fn load_config(path: Option<String>) -> Config {
     let config_path = match path {
         Some(p) => p.to_string(),
         _none => {
@@ -18,15 +33,23 @@ pub fn load_config(path: Option<String>) -> Result<Config, toml::de::Error> {
             format!("{}/termrun/config.toml", xdg_config_home)
         }
     };
-    // Check if the file exists, if not create just a default config
-    if !std::path::Path::new(&config_path).exists() {
-        return Ok(Config {
-            background_color: Some("#000000".to_string()),
-            text_color: Some("#FFFFFF".to_string()),
-            border_color: Some("#FFFFFF".to_string()),
-            accent_color: Some("#FF0000".to_string()),
-        });
+
+    let mut config_str = String::new();
+
+    // Check if the config file exists
+    if std::path::Path::new(&config_path).exists() {
+        config_str = std::fs::read_to_string(config_path).unwrap();
     }
-    let config_str = std::fs::read_to_string(config_path).unwrap();
-    toml::de::from_str(&config_str)
+
+    let imported_conf: SerializeConfig= toml::de::from_str(&config_str).unwrap();
+
+    let config = Config {
+        background_color: imported_conf.background_color.unwrap_or("#000000".to_string()),
+        text_color: imported_conf.text_color.unwrap_or("#FFFFFF".to_string()),
+        border_color: imported_conf.border_color.unwrap_or("#FFFFFF".to_string()),
+        accent_color: imported_conf.accent_color.unwrap_or("#FF0000".to_string()),
+        icon_theme: imported_conf.icon_theme.unwrap_or("hicolor".to_string())
+    };
+    
+    config
 }

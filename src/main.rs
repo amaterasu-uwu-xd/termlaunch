@@ -1,7 +1,8 @@
 use clap::Parser;
 
 mod config;
-mod apps;
+mod applications;
+mod app;
 
 /// Open your desktop apps from the command line
 #[derive(Parser, Debug)]
@@ -15,38 +16,12 @@ struct Args {
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    let load_conf = config::load_config(args.config);
+    // // Getting the icon from an app
+    // let icon = applications::get_app_icon("zen-twilight".to_string(), &config);
+    // let res = icon.unwrap_or_default(); 
+    // println!("Icon: {}", res.to_str().unwrap_or(""));
 
-    if let Err(e) = load_conf {
-        eprintln!("Error loading config: {}", e);
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"));
-    }
-
-    let config = load_conf.unwrap();
-
-    // Getting the applications
-    let apps = apps::get_apps();
-    if apps.is_empty() {
-        eprintln!("No applications found");
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "No applications found"));
-    }
-
-    // Search for dolphin
-    let search = "dolphin";
-    let mut found = false;
-    for app in &apps {
-        if app.name.to_lowercase().contains(&search.to_lowercase()) {
-            println!("Found: {}", app.name);
-            println!("Command: {}", app.command);
-            println!("Icon: {}", app.icon);
-            println!("Categories: {:?}", app.categories);
-            found = true;
-            break;
-        }
-    }
-    if !found {
-        println!("No application found with the name: {}", search);
-    }
+    let _ = app::startup(args.config);
 
     Ok(())
 }

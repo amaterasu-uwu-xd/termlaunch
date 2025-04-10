@@ -1,19 +1,27 @@
-use freedesktop_file_parser::{EntryType, parse};
+use std::path::PathBuf;
 
-pub struct App {
+use freedesktop_file_parser::{EntryType, parse};
+use freedesktop_icons::lookup;
+
+use crate::config;
+
+#[derive(Debug, Clone)]
+pub struct Application {
     pub name: String,
     pub command: String,
+    pub comment: String,
     pub icon: String,
     pub categories: Vec<String>,
     pub actions: Vec<Action>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Action {
     pub name: String,
     pub command: String,
 }
 
-pub fn get_apps() -> Vec<App> {
+pub fn get_apps() -> Vec<Application> {
     let binding = std::env::var("XDG_DATA_DIRS")
         .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
     let mut dirs = binding.split(':').collect::<Vec<&str>>();
@@ -56,10 +64,11 @@ pub fn get_apps() -> Vec<App> {
                                 });
                             }
 
-                            apps.push(App {
+                            apps.push(Application {
                                 name: parsed.entry.name.clone().default,
                                 command: app.exec.as_ref().unwrap().to_string(),
                                 icon: parsed.entry.icon.clone().unwrap_or_default().content,
+                                comment: parsed.entry.comment.clone().unwrap_or_default().default,
                                 categories: app.categories.clone().unwrap_or_default(),
                                 actions
                             });
@@ -76,4 +85,13 @@ pub fn get_apps() -> Vec<App> {
     // Order the applications by name
     apps.sort_by(|a, b| a.name.cmp(&b.name));
     return apps;
+}
+
+pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
+{
+    lookup(name.as_str())
+        .with_size(1024)
+        .with_scale(2)
+        .with_theme(&config.icon_theme)
+        .find()
 }
