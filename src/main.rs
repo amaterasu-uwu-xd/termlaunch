@@ -3,6 +3,7 @@ use clap::Parser;
 mod config;
 mod applications;
 mod app;
+mod image;
 
 /// Open your desktop apps from the command line
 #[derive(Parser, Debug)]

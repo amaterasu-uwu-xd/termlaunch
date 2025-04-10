@@ -8,7 +8,6 @@ use crate::config;
 #[derive(Debug, Clone)]
 pub struct Application {
     pub name: String,
-    pub command: String,
     pub comment: String,
     pub icon: String,
     pub categories: Vec<String>,
@@ -57,6 +56,14 @@ pub fn get_apps() -> Vec<Application> {
                             };
                             // Get the actions 
                             let mut actions = Vec::new();
+
+                            // add app.exec.as_ref().unwrap() to the actions
+                            if let Some(exec) = &app.exec {
+                                actions.push(Action {
+                                    name: "Run".to_string(),
+                                    command: exec.to_string()
+                                });
+                            }
                             for (_name,action)  in parsed.actions {
                                 actions.push(Action {
                                     name: action.name.default,
@@ -66,7 +73,6 @@ pub fn get_apps() -> Vec<Application> {
 
                             apps.push(Application {
                                 name: parsed.entry.name.clone().default,
-                                command: app.exec.as_ref().unwrap().to_string(),
                                 icon: parsed.entry.icon.clone().unwrap_or_default().content,
                                 comment: parsed.entry.comment.clone().unwrap_or_default().default,
                                 categories: app.categories.clone().unwrap_or_default(),
@@ -91,7 +97,6 @@ pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
 {
     lookup(name.as_str())
         .with_size(1024)
-        .with_scale(2)
         .with_theme(&config.icon_theme)
         .find()
 }
