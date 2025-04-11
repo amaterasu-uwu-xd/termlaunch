@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use freedesktop_file_parser::{EntryType, parse};
 use freedesktop_icons::lookup;
 
+use fork::{daemon, Fork};
+use std::process::Command;
+
 use crate::config;
 
 #[derive(Debug, Clone)]
@@ -10,6 +13,7 @@ pub struct Application {
     pub name: String,
     pub comment: String,
     pub icon: String,
+    pub terminal: bool,
     pub categories: Vec<String>,
     pub actions: Vec<Action>,
 }
@@ -72,9 +76,10 @@ pub fn get_apps() -> Vec<Application> {
                             }
 
                             apps.push(Application {
-                                name: parsed.entry.name.clone().default,
-                                icon: parsed.entry.icon.clone().unwrap_or_default().content,
-                                comment: parsed.entry.comment.clone().unwrap_or_default().default,
+                                name: parsed.entry.name.default,
+                                icon: parsed.entry.icon.unwrap_or_default().content,
+                                terminal: app.terminal.unwrap_or(false),
+                                comment: parsed.entry.comment.unwrap_or_default().default,
                                 categories: app.categories.clone().unwrap_or_default(),
                                 actions
                             });
@@ -99,4 +104,62 @@ pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
         .with_size(1024)
         .with_theme(&config.icon_theme)
         .find()
+}
+
+pub fn spawn_app(command: String, terminal: bool, config: &config::Config) {
+    // Split the command into arguments, if it contains spaces, except if its in quotes
+    let mut args = Vec::new();
+    let mut current_arg = String::new();
+    let mut in_quotes = false;
+    let mut skip_next = false;
+    for c in command.chars() {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if c == '\\' {
+            skip_next = true;
+            continue;
+        }
+        if c == '"' {
+            in_quotes = !in_quotes;
+            continue;
+        }
+        if c == ' ' && !in_quotes {
+            args.push(current_arg.clone());
+            current_arg.clear();
+            continue;
+        }
+        current_arg.push(c);
+    }
+    if !current_arg.is_empty() {
+        args.push(current_arg);
+    }
+
+    // Remove the arguments that starts with %
+    args.retain(|arg| !arg.starts_with('%'));
+
+    let program = args[0].clone();
+    // remove the first argument
+    args.remove(0);
+
+    let mut command_builder: Command;
+
+    command_builder = if terminal {
+        let mut cmd = Command::new(&config.terminal);
+        cmd.arg("-e").arg(program);
+        cmd
+    } else {
+        Command::new(program)
+    };
+
+    for arg in args {
+        command_builder.arg(arg);
+    }
+
+    if let Ok(Fork::Child) = daemon(false, false) {
+        _ = command_builder
+            .spawn();
+    }
+
 }

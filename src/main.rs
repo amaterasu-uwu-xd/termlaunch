@@ -17,11 +17,6 @@ struct Args {
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    // // Getting the icon from an app
-    // let icon = applications::get_app_icon("zen-twilight".to_string(), &config);
-    // let res = icon.unwrap_or_default(); 
-    // println!("Icon: {}", res.to_str().unwrap_or(""));
-
     let _ = app::startup(args.config);
 
     Ok(())

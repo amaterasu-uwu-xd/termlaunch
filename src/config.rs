@@ -9,7 +9,8 @@ pub struct SerializeConfig {
     pub text_color: Option<String>,
     pub border_color: Option<String>,
     pub accent_color: Option<String>,
-    pub icon_theme: Option<String>
+    pub icon_theme: Option<String>,
+    pub terminal: Option<String>,
 }
 
 /// Config struct for the application.
@@ -20,7 +21,8 @@ pub struct Config {
     pub text_color: String,
     pub border_color: String,
     pub accent_color: String,
-    pub icon_theme: String
+    pub icon_theme: String,
+    pub terminal: String,
 }
 
 // Opem the config file from $HOME/.config/termrun/config.toml or $XDG_CONFIG_HOME/termrun/config.toml
@@ -48,7 +50,8 @@ pub fn load_config(path: Option<String>) -> Config {
         text_color: imported_conf.text_color.unwrap_or("#FFFFFF".to_string()),
         border_color: imported_conf.border_color.unwrap_or("#FFFFFF".to_string()),
         accent_color: imported_conf.accent_color.unwrap_or("#FF0000".to_string()),
-        icon_theme: imported_conf.icon_theme.unwrap_or("hicolor".to_string())
+        icon_theme: imported_conf.icon_theme.unwrap_or("hicolor".to_string()),
+        terminal: imported_conf.terminal.unwrap_or("kitty".to_string()),
     };
     
     config

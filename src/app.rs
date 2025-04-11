@@ -1,21 +1,17 @@
+use std::process::{exit, Command, Stdio};
+
 use color_eyre::Result;
 use ratatui::{
-    DefaultTerminal,
-    buffer::Buffer,
-    crossterm::event::{self, Event, KeyCode},
-    layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{
+    buffer::Buffer, crossterm::event::{self, Event, KeyCode}, layout::{Constraint, Layout, Rect}, style::{Color, Modifier, Style}, text::{Line, Span, Text}, widgets::{
         Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
         Widget,
-    },
+    }, DefaultTerminal
 };
 use ratatui_image::{StatefulImage, picker::Picker};
 
 use crate::{
-    applications::{self, Action, Application, get_app_icon},
-    config::{Config, load_config},
+    applications::{self, get_app_icon, spawn_app, Action, Application},
+    config::{load_config, Config},
     image::get_image,
 };
 
@@ -41,9 +37,9 @@ struct ActionList {
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let [header_area, main_area, footer_area] = Layout::vertical([
-            Constraint::Max(10),
+            Constraint::Length(3),
             Constraint::Min(1),
-            Constraint::Max(10),
+            Constraint::Length(3),
         ])
         .areas(area);
 
@@ -57,7 +53,7 @@ impl Widget for &mut App {
         ])
         .areas(item_area);
         self.render_header(header_area, buf);
-        // App::render_footer(footer_area, buf);
+        self.render_footer(footer_area, buf);
         self.render_list(list_area, buf);
         self.render_selected_item(icon_area, about_area, actions_area, buf);
     }
@@ -106,6 +102,10 @@ impl App {
         self.action_list.state.select_next();
     }
 
+    fn select_previous_action(&mut self) {
+        self.action_list.state.select_previous();
+    }
+
     fn select_previous(&mut self) {
         self.application_list.state.select_previous();
     }
@@ -140,6 +140,22 @@ impl App {
             .unwrap_or(self.input.len())
     }
 
+    fn run_action(&self) {
+        let selected_index = self.application_list.state.selected().unwrap_or(0);
+        let selected_action_index = self.action_list.state.selected().unwrap_or(0);
+
+        let selected_action = &self.application_list.applications[selected_index]
+            .actions[selected_action_index];
+        let command = selected_action.command.clone();
+        
+        let is_terminal = self.application_list.applications[selected_index].terminal;
+        
+        spawn_app(command, is_terminal, &self.config);
+
+        exit(0);
+        
+    }
+
     fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         loop {
             // terminal.draw(|frame| self.draw(frame))?;
@@ -151,11 +167,11 @@ impl App {
                     KeyCode::Left => self.move_cursor_left(),
                     KeyCode::Right => self.move_cursor_right(),
                     KeyCode::Esc => return Ok(()),
-                    KeyCode::Enter => todo!(),
+                    KeyCode::Enter => self.run_action(),
                     KeyCode::Up => self.select_previous(),
                     KeyCode::Down => self.select_next(),
                     KeyCode::Tab => self.select_next_action(),
-                    KeyCode::Delete => todo!(),
+                    KeyCode::BackTab => self.select_previous_action(),
                     _ => {}
                 }
             }
@@ -163,15 +179,6 @@ impl App {
     }
 
     fn render_header(&self, header_area: Rect, buf: &mut Buffer) {
-        // let input = Paragraph::new(self.input.as_str())
-        //     .block(Block::bordered().title("Input").border_type(BorderType::Rounded));
-        // frame.render_widget(input, input_area);
-
-        // frame.set_cursor_position(Position::new(
-        //     input_area.x + self.character_index as u16 + 1,
-        //     input_area.y + 1,
-        // ));
-
         Paragraph::new(self.input.as_str())
             .block(
                 Block::bordered()
@@ -179,6 +186,22 @@ impl App {
                     .border_type(BorderType::Rounded),
             )
             .render(header_area, buf);
+        buf.set_string(
+            header_area.x + self.character_index as u16 + 1,
+            header_area.y + 1,
+            self.input.chars().nth(self.character_index).unwrap_or(' ').to_string(),
+            Style::default().bg(Color::Blue).fg(Color::White),
+        );
+    }
+
+    fn render_footer(&self, footer_area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Press ESC to exit")
+            .block(
+                Block::bordered()
+                    .title("Help")
+                    .border_type(BorderType::Rounded),
+            )
+            .render(footer_area, buf);
     }
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
@@ -200,7 +223,7 @@ impl App {
                     )),
                     Line::from(Span::styled(
                         app.comment.clone(),
-                        Style::default().fg(Color::Gray),
+                        Style::default().fg(Color::DarkGray),
                     )),
                 ]);
                 ListItem::new(text)
@@ -208,7 +231,7 @@ impl App {
             .collect();
         let final_list = List::new(items)
             .block(block)
-            .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
+            .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
             .highlight_symbol(">> ")
             .highlight_spacing(HighlightSpacing::Always);
         StatefulWidget::render(final_list, area, buf, &mut self.application_list.state);
@@ -313,11 +336,12 @@ impl App {
             .collect();
         let final_list = List::new(items)
             .block(block)
-            .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
+            .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
             .highlight_symbol(">> ")
             .highlight_spacing(HighlightSpacing::Always);
         StatefulWidget::render(final_list, action_area, buf, &mut self.action_list.state);
     }
+    
 }
 
 pub fn startup(config_path: Option<String>) -> Result<()> {
