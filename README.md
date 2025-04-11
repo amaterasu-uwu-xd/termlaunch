@@ -23,7 +23,7 @@ https://github.com/user-attachments/assets/8fbf3679-7065-43a9-8809-ce434fd53846
 You can install it using cargo, the Rust package manager. You can install it with the following command:
 
 ```bash
-cargo install --git <repository-url>
+cargo install --git https://github.com/amaterasu-uwu-xd/termrun
 ```
 
 Make sure you have `$HOME/.cargo/bin` in your `$PATH`. 
@@ -32,8 +32,9 @@ Make sure you have `$HOME/.cargo/bin` in your `$PATH`.
 ### Cloning the repository
 You can clone the repository using the following command:    
 ```bash
-git clone <repository-url>
-cd /path/to/your/clone
+cd ~/Downloads
+git clone https://github.com/amaterasu-uwu-xd/termrun
+cd termrun
 cargo build --release
 ```
 
