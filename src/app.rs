@@ -1,4 +1,4 @@
-use std::process::{exit, Command, Stdio};
+use std::process::exit;
 
 use color_eyre::Result;
 use ratatui::{

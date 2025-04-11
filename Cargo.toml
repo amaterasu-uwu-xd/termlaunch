@@ -2,6 +2,11 @@
 name = "termrun"
 version = "0.1.0"
 edition = "2024"
+license-file = "LICENSE"
+description = "[WIP] Launch your desktop applications through a terminal emulator"
+categories = ["command-line-utilities", "desktop-application"]
+keywords = ["terminal", "desktop", "application", "launcher"]
+repository = "https://github.com/amaterasu-uwu-xd/termrun"
 
 [dependencies]
 clap = { version = "4.5.35", features = ["derive"] }
