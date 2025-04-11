@@ -2,7 +2,7 @@
 
 This is a very WIP project that allows you to launch your desktop applications through a terminal emulator. It is designed with the worst developer practices.
 
-![termrun](media/termrun-showcase.mp4)
+https://raw.githubusercontent.com/amaterasu-uwu-xd/termrun/refs/heads/master/media/termrun-showcase.mp4
 
 ## Features
 - Launch applications or some of its actions
