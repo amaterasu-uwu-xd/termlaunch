@@ -89,12 +89,8 @@ pub fn get_apps() -> Vec<Application> {
             }
         }
     }
-    // Remove empty strings
-    apps.retain(|app| !app.name.is_empty());
-    // Remove duplicates
-    apps.dedup_by(|a, b| a.name == b.name);
-    // Order the applications by name
-    apps.sort_by(|a, b| a.name.cmp(&b.name));
+    // Order the applications by name, case insensitive
+    apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     return apps;
 }
 
