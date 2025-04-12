@@ -2,16 +2,22 @@ use std::process::exit;
 
 use color_eyre::Result;
 use ratatui::{
-    buffer::Buffer, crossterm::event::{self, Event, KeyCode}, layout::{Constraint, Layout, Rect}, style::{Color, Modifier, Style}, text::{Line, Span, Text}, widgets::{
+    DefaultTerminal,
+    buffer::Buffer,
+    crossterm::event::{self, Event, KeyCode},
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span, Text},
+    widgets::{
         Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
         Widget,
-    }, DefaultTerminal
+    },
 };
 use ratatui_image::{StatefulImage, picker::Picker};
 
 use crate::{
-    applications::{self, get_app_icon, spawn_app, Action, Application},
-    config::{load_config, Config},
+    applications::{self, Action, Application, get_app_icon, spawn_app},
+    config::{Config, load_config},
     image::get_image,
 };
 
@@ -20,6 +26,7 @@ pub struct App {
     input: String,
     character_index: usize,
     application_list: ApplicationList,
+    original_list: Vec<Application>,
     action_list: ActionList,
     config: Config,
 }
@@ -61,11 +68,13 @@ impl Widget for &mut App {
 
 impl App {
     pub fn new(config_path: Option<String>) -> Self {
+        let apps = applications::get_apps();
         App {
             input: String::new(),
             character_index: 0,
+            original_list: apps.clone(),
             application_list: ApplicationList {
-                applications: applications::get_apps(),
+                applications: apps,
                 state: {
                     let mut state = ListState::default();
                     state.select(Some(0));
@@ -121,14 +130,17 @@ impl App {
             let from_left_to_current_index = current_index - 1;
             let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
             let after_char_to_delete = self.input.chars().skip(current_index);
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+            let new_input: String = before_char_to_delete.chain(after_char_to_delete).collect();
+            self.update_input(new_input); // Usa el nuevo método
             self.move_cursor_left();
         }
     }
 
     fn enter_char(&mut self, new_char: char) {
         let index = self.byte_index();
-        self.input.insert(index, new_char);
+        let mut new_input = self.input.clone();
+        new_input.insert(index, new_char);
+        self.update_input(new_input); // Usa el nuevo método
         self.move_cursor_right();
     }
 
@@ -140,20 +152,57 @@ impl App {
             .unwrap_or(self.input.len())
     }
 
+    pub fn update_input(&mut self, new_input: String) {
+        self.input = new_input;
+        self.on_input_change();
+    }
+
+    fn on_input_change(&mut self) {
+        // Filter the applications based on the input
+        let filtered_apps: Vec<Application> = self
+            .original_list
+            .iter()
+            .filter(|app| {
+                app.name.to_lowercase().contains(&self.input.to_lowercase())
+            })
+            .cloned()
+            .collect();
+        if filtered_apps.is_empty() {
+            let temp_app = Application {
+                entry: "".to_string(),
+                name: "No results".to_string(),
+                comment: "No applications found".to_string(),
+                icon: "".to_string(),
+                terminal: false,
+                actions: vec![Action {
+                    name: "Try typing something else".to_string(),
+                    command: "Or exit the application".to_string(), 
+                }],
+                categories: vec![],
+            };
+            self.application_list.applications = vec![temp_app];
+            self.application_list.state.select(Some(0));
+            
+            return;
+        }
+        self.application_list.applications = filtered_apps;
+        self.application_list.state.select(Some(0));
+
+    }
+
     fn run_action(&self) {
         let selected_index = self.application_list.state.selected().unwrap_or(0);
         let selected_action_index = self.action_list.state.selected().unwrap_or(0);
 
-        let selected_action = &self.application_list.applications[selected_index]
-            .actions[selected_action_index];
+        let selected_action =
+            &self.application_list.applications[selected_index].actions[selected_action_index];
         let command = selected_action.command.clone();
-        
+
         let is_terminal = self.application_list.applications[selected_index].terminal;
-        
+
         spawn_app(command, is_terminal, &self.config);
 
         exit(0);
-        
     }
 
     fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
@@ -189,7 +238,11 @@ impl App {
         buf.set_string(
             header_area.x + self.character_index as u16 + 1,
             header_area.y + 1,
-            self.input.chars().nth(self.character_index).unwrap_or(' ').to_string(),
+            self.input
+                .chars()
+                .nth(self.character_index)
+                .unwrap_or(' ')
+                .to_string(),
             Style::default().bg(Color::Blue).fg(Color::White),
         );
     }
@@ -341,7 +394,6 @@ impl App {
             .highlight_spacing(HighlightSpacing::Always);
         StatefulWidget::render(final_list, action_area, buf, &mut self.action_list.state);
     }
-    
 }
 
 pub fn startup(config_path: Option<String>) -> Result<()> {
