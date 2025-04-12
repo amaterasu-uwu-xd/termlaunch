@@ -10,6 +10,7 @@ use crate::config;
 
 #[derive(Debug, Clone)]
 pub struct Application {
+    pub entry: String,
     pub name: String,
     pub comment: String,
     pub icon: String,
@@ -25,74 +26,105 @@ pub struct Action {
 }
 
 pub fn get_apps() -> Vec<Application> {
-    let binding = std::env::var("XDG_DATA_DIRS")
+    // system entries, should be $XDG_DATA_DIRS/applications or /usr/local/share/applications:/usr/share/applications
+    let system_entries = std::env::var("XDG_DATA_DIRS")
         .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
-    let mut dirs = binding.split(':').collect::<Vec<&str>>();
-    let binding = std::env::var("XDG_DATA_HOME")
+
+    // user entries, should be $XDG_DATA_HOME/applications or $HOME/.local/share/applications
+    let user_entries = std::env::var("XDG_DATA_HOME")
         .unwrap_or_else(|_| format!("{}/.local/share", std::env::var("HOME").unwrap()));
-    dirs.push(&binding);
 
-    let mut apps = Vec::new();
+    let mut apps: Vec<Application> = Vec::new();
 
-    // Iterate over the directories
-    for dir in dirs {
-        // Check the applications directory
-        let app_dir = format!("{}/applications", dir);
-        if let Ok(entries) = std::fs::read_dir(app_dir) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    if entry
-                        .path()
-                        .extension()
-                        .map(|s| s == "desktop")
-                        .unwrap_or(false)
-                    {
-                        // Get the text of the file
-                        let file_content = std::fs::read_to_string(entry.path())
-                            .unwrap_or_else(|_| "".to_string());
-                        // Parse the file
-                        let parsed = parse(&file_content).unwrap();
-                        // Check if the entry should be visible
-                        if let EntryType::Application(app) = &parsed.entry.entry_type {
-                            // Check if the entry is visible
-                            if parsed.entry.no_display.unwrap_or(false) == true {
-                                continue
-                            };
-                            // Get the actions 
-                            let mut actions = Vec::new();
+    for dir in system_entries.split(':') {
+        // Check if the directory exists
+        if std::path::Path::new(dir).exists() {
+            // Get the desktop entries
+            get_desktop_entries(false, dir.to_string(), &mut apps);
+        }
+    }
 
-                            // add app.exec.as_ref().unwrap() to the actions
-                            if let Some(exec) = &app.exec {
-                                actions.push(Action {
-                                    name: "Run".to_string(),
-                                    command: exec.to_string()
-                                });
-                            }
-                            for (_name,action)  in parsed.actions {
-                                actions.push(Action {
-                                    name: action.name.default,
-                                    command: action.exec.unwrap()
-                                });
-                            }
+    // Check if the user directory exists
+    if std::path::Path::new(&user_entries).exists() {
+        // Get the desktop entries
+        get_desktop_entries(true, user_entries, &mut apps);
+    }
 
-                            apps.push(Application {
-                                name: parsed.entry.name.default,
-                                icon: parsed.entry.icon.unwrap_or_default().content,
-                                terminal: app.terminal.unwrap_or(false),
-                                comment: parsed.entry.comment.unwrap_or_default().default,
-                                categories: app.categories.clone().unwrap_or_default(),
-                                actions
+    // Order the applications by name, case insensitive
+    apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    return apps;
+}
+
+fn get_desktop_entries(is_user: bool, path: String, apps: &mut Vec<Application>) {
+    // Check the applications directory
+    let app_dir = format!("{}/applications", path);
+    if let Ok(entries) = std::fs::read_dir(app_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                if entry
+                    .path()
+                    .extension()
+                    .map(|s| s == "desktop")
+                    .unwrap_or(false)
+                {
+                    // Get the text of the file
+                    let file_content = std::fs::read_to_string(entry.path())
+                        .unwrap_or_else(|_| "".to_string());
+                    // Parse the file
+                    let parsed = parse(&file_content).unwrap();
+                    // Check if the entry should be visible
+                    if let EntryType::Application(app) = &parsed.entry.entry_type {
+                        // Check if the entry is visible
+                        if parsed.entry.no_display.unwrap_or(false) == true {
+                            continue
+                        };
+                        let mut actions = Vec::new();
+
+                        if let Some(exec) = &app.exec {
+                            actions.push(Action {
+                                name: "Run".to_string(),
+                                command: exec.to_string()
                             });
                         }
+
+                        for (_name,action)  in parsed.actions {
+                            actions.push(Action {
+                                name: action.name.default,
+                                command: action.exec.unwrap()
+                            });
+                        }
+
+                        let app = Application {
+                            entry: entry.file_name()
+                                .to_str()
+                                .unwrap_or("")
+                                .to_string(),
+                            name: parsed.entry.name.default,
+                            icon: parsed.entry.icon.unwrap_or_default().content,
+                            terminal: app.terminal.unwrap_or(false),
+                            comment: parsed.entry.comment.unwrap_or_default().default,
+                            categories: app.categories.clone().unwrap_or_default(),
+                            actions: actions
+                        };
+                        // if the entry is user, first check if it already exists in the entries, if it does, replace it, if not, push it
+                        if is_user {
+                            if let Some(index) = apps.iter().position(|x| x.entry == app.entry) {
+                                apps[index] = app;
+                            } else {
+                                apps.push(app);
+                            }
+                        } else {
+                            // if the entry is system, just push it
+                            apps.push(app);
+                        }
+
                     }
                 }
             }
         }
     }
-    // Order the applications by name, case insensitive
-    apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-    return apps;
 }
+
 
 pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
 {
