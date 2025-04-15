@@ -187,6 +187,7 @@ pub fn spawn_app(command: String, terminal: bool, config: &config::Config) {
 
     if let Ok(Fork::Child) = daemon(false, false) {
         _ = command_builder
+            .current_dir(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
             .spawn();
     }
 
