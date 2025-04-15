@@ -74,7 +74,6 @@ fn get_desktop_entries(is_user: bool, path: String, apps: &mut Vec<Application>)
                     let parsed = parse(&file_content);
 
                     if parsed.is_err() {
-                        eprintln!("Error parsing file {}: {}", entry.path().display(), parsed.err().unwrap());
                         continue;
                     }
                     let parsed = parsed.unwrap();

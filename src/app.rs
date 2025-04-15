@@ -21,7 +21,6 @@ use crate::{
     image::get_image,
 };
 
-/// Estado de la aplicación
 pub struct App {
     input: String,
     character_index: usize,
@@ -53,22 +52,36 @@ impl Widget for &mut App {
         let [list_area, item_area] =
             Layout::horizontal([Constraint::Fill(2), Constraint::Fill(1)]).areas(main_area);
 
-        let [icon_area, about_area, actions_area] = Layout::vertical([
+        let [icon_area, about_area, action_area] = Layout::vertical([
             Constraint::Percentage(40),
             Constraint::Fill(1),
             Constraint::Fill(1),
         ])
         .areas(item_area);
         self.render_header(header_area, buf);
-        self.render_footer(footer_area, buf);
         self.render_list(list_area, buf);
-        self.render_selected_item(icon_area, about_area, actions_area, buf);
+        self.render_selected_item(icon_area, about_area, action_area, buf);
+        self.render_footer(footer_area, buf);
     }
 }
 
 impl App {
     pub fn new(config_path: Option<String>) -> Self {
         let apps = applications::get_apps();
+        // Get the actions for the first application
+        let info = if let Some(i) = apps.first() {
+            i.clone()
+        } else {
+            Application {
+                entry: "".to_string(),
+                name: "No applications".to_string(),
+                comment: "No applications found".to_string(),
+                icon: "".to_string(),
+                terminal: false,
+                actions: vec![],
+                categories: vec![],
+            }
+        };
         App {
             input: String::new(),
             character_index: 0,
@@ -82,7 +95,7 @@ impl App {
                 },
             },
             action_list: ActionList {
-                actions: Vec::new(),
+                actions: info.actions.clone(),
                 state: {
                     let mut state = ListState::default();
                     state.select(Some(0));
@@ -103,20 +116,42 @@ impl App {
         self.character_index = self.clamp_cursor(cursor_moved_right);
     }
 
-    fn select_next(&mut self) {
-        self.application_list.state.select_next();
+    fn select_next_app(&mut self) {
+        let is_not_last_app = self.application_list.state.selected() != Some(self.application_list.applications.len() - 1);
+        if is_not_last_app {
+            self.application_list.state.select_next();
+        } else {
+            self.application_list.state.select(Some(0));
+        }  
+        self.update_actions();
+    }
+
+    fn select_previous_app(&mut self) {
+        let is_not_first_app = self.application_list.state.selected() != Some(0);
+        if is_not_first_app {
+            self.application_list.state.select_previous();
+        } else {
+            self.application_list.state.select(Some(self.application_list.applications.len() - 1));
+        }
+        self.update_actions();
     }
 
     fn select_next_action(&mut self) {
-        self.action_list.state.select_next();
+        let is_not_last_action = self.action_list.state.selected() != Some(self.action_list.actions.len() - 1);
+        if is_not_last_action {
+            self.action_list.state.select_next();
+        } else {
+            self.action_list.state.select(Some(0));
+        }
     }
 
     fn select_previous_action(&mut self) {
-        self.action_list.state.select_previous();
-    }
-
-    fn select_previous(&mut self) {
-        self.application_list.state.select_previous();
+        let is_not_first_action = self.action_list.state.selected() != Some(0);
+        if is_not_first_action {
+            self.action_list.state.select_previous();
+        } else {
+            self.action_list.state.select(Some(self.action_list.actions.len() - 1));
+        }
     }
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
@@ -131,7 +166,7 @@ impl App {
             let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
             let after_char_to_delete = self.input.chars().skip(current_index);
             let new_input: String = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.update_input(new_input); // Usa el nuevo método
+            self.update_input(new_input);
             self.move_cursor_left();
         }
     }
@@ -140,7 +175,7 @@ impl App {
         let index = self.byte_index();
         let mut new_input = self.input.clone();
         new_input.insert(index, new_char);
-        self.update_input(new_input); // Usa el nuevo método
+        self.update_input(new_input);
         self.move_cursor_right();
     }
 
@@ -155,6 +190,16 @@ impl App {
     pub fn update_input(&mut self, new_input: String) {
         self.input = new_input;
         self.on_input_change();
+    }
+
+    fn update_actions(&mut self) {
+        let info = if let Some(i) = self.application_list.state.selected() {
+            self.application_list.applications[i].clone()
+        } else {
+            self.application_list.applications[0].clone()
+        };
+        self.action_list.actions = info.actions.clone();
+        self.action_list.state.select(Some(0));
     }
 
     fn on_input_change(&mut self) {
@@ -182,11 +227,13 @@ impl App {
             };
             self.application_list.applications = vec![temp_app];
             self.application_list.state.select(Some(0));
+            self.update_actions();
             
             return;
         }
         self.application_list.applications = filtered_apps;
         self.application_list.state.select(Some(0));
+        self.update_actions();
 
     }
 
@@ -217,8 +264,8 @@ impl App {
                     KeyCode::Right => self.move_cursor_right(),
                     KeyCode::Esc => return Ok(()),
                     KeyCode::Enter => self.run_action(),
-                    KeyCode::Up => self.select_previous(),
-                    KeyCode::Down => self.select_next(),
+                    KeyCode::Up => self.select_previous_app(),
+                    KeyCode::Down => self.select_next_app(),
                     KeyCode::Tab => self.select_next_action(),
                     KeyCode::BackTab => self.select_previous_action(),
                     _ => {}
@@ -248,10 +295,14 @@ impl App {
     }
 
     fn render_footer(&self, footer_area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Press ESC to exit")
+        // ↑ ↓ to navigate
+        // Tab, Shift+Tab to navigate actions
+        // Enter to run action
+        // Esc to exit
+        Paragraph::new("↑↓ to navigate apps | Tab to navigate actions | Enter to run action | Esc to exit")
             .block(
                 Block::bordered()
-                    .title("Help")
+                    .title("Controls")
                     .border_type(BorderType::Rounded),
             )
             .render(footer_area, buf);
@@ -286,7 +337,7 @@ impl App {
             .block(block)
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
             .highlight_symbol(">> ")
-            .highlight_spacing(HighlightSpacing::Always);
+            .highlight_spacing(HighlightSpacing::WhenSelected);
         StatefulWidget::render(final_list, area, buf, &mut self.application_list.state);
     }
 
@@ -297,6 +348,7 @@ impl App {
         action_area: Rect,
         buf: &mut Buffer,
     ) -> () {
+
         let info = if let Some(i) = self.application_list.state.selected() {
             self.application_list.applications[i].clone()
         } else {
@@ -359,10 +411,6 @@ impl App {
         );
         selected_item.render(about_area, buf);
 
-        // Set the actual actions
-        self.action_list.actions = info.actions.clone();
-        self.action_list.state.select(Some(0));
-
         let block = Block::new()
             .title("Actions")
             .border_type(BorderType::Rounded)
@@ -381,7 +429,7 @@ impl App {
                     )),
                     Line::from(Span::styled(
                         action.command.clone(),
-                        Style::default().fg(Color::Gray),
+                        Style::default().fg(Color::DarkGray),
                     )),
                 ]);
                 ListItem::new(text)
@@ -391,7 +439,7 @@ impl App {
             .block(block)
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
             .highlight_symbol(">> ")
-            .highlight_spacing(HighlightSpacing::Always);
+            .highlight_spacing(HighlightSpacing::WhenSelected);
         StatefulWidget::render(final_list, action_area, buf, &mut self.action_list.state);
     }
 }

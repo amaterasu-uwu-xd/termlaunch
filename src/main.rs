@@ -20,7 +20,6 @@ fn main() -> std::io::Result<()> {
     let file = std::fs::File::create(lock_file)?;
     let locked = file.try_lock_exclusive();
     if !locked.unwrap() {    
-        println!("Termrun is already running");
         std::process::exit(1);
     }
     let args = Args::parse();
