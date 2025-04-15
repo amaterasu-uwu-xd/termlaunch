@@ -1,4 +1,5 @@
 use clap::Parser;
+use fs4::fs_std::FileExt;
 
 mod config;
 mod applications;
@@ -15,9 +16,15 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
+    let lock_file = "/tmp/termrun.lock";
+    let file = std::fs::File::create(lock_file)?;
+    let locked = file.try_lock_exclusive();
+    if !locked.unwrap() {    
+        println!("Termrun is already running");
+        std::process::exit(1);
+    }
     let args = Args::parse();
-
     let _ = app::startup(args.config);
-
     Ok(())
+
 }
