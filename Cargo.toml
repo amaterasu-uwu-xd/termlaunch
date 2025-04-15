@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license-file = "LICENSE"
 description = "[WIP] Launch your desktop applications through a terminal emulator"
-categories = ["command-line-utilities", "desktop-application"]
+categories = ["command-line-utilities"]
 keywords = ["terminal", "desktop", "application", "launcher"]
 repository = "https://github.com/amaterasu-uwu-xd/termrun"
 
