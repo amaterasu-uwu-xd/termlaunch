@@ -1,4 +1,4 @@
-# Termrun
+# Termlaunch
 
 This is a very WIP project that allows you to launch your desktop applications through a terminal emulator. It is designed with the worst developer practices.
 
