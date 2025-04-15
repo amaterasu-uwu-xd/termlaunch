@@ -71,10 +71,15 @@ fn get_desktop_entries(is_user: bool, path: String, apps: &mut Vec<Application>)
                     let file_content = std::fs::read_to_string(entry.path())
                         .unwrap_or_else(|_| "".to_string());
                     // Parse the file
-                    let parsed = parse(&file_content).unwrap();
-                    // Check if the entry should be visible
+                    let parsed = parse(&file_content);
+
+                    if parsed.is_err() {
+                        eprintln!("Error parsing file {}: {}", entry.path().display(), parsed.err().unwrap());
+                        continue;
+                    }
+                    let parsed = parsed.unwrap();
+
                     if let EntryType::Application(app) = &parsed.entry.entry_type {
-                        // Check if the entry is visible
                         if parsed.entry.no_display.unwrap_or(false) == true {
                             continue
                         };
