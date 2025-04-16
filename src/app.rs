@@ -1,11 +1,10 @@
-use std::process::exit;
-
 use color_eyre::Result;
 use ratatui::{
-    DefaultTerminal,
+    Terminal,
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode},
     layout::{Constraint, Layout, Rect},
+    prelude::CrosstermBackend,
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
@@ -117,12 +116,13 @@ impl App {
     }
 
     fn select_next_app(&mut self) {
-        let is_not_last_app = self.application_list.state.selected() != Some(self.application_list.applications.len() - 1);
+        let is_not_last_app = self.application_list.state.selected()
+            != Some(self.application_list.applications.len() - 1);
         if is_not_last_app {
             self.application_list.state.select_next();
         } else {
             self.application_list.state.select(Some(0));
-        }  
+        }
         self.update_actions();
     }
 
@@ -131,13 +131,16 @@ impl App {
         if is_not_first_app {
             self.application_list.state.select_previous();
         } else {
-            self.application_list.state.select(Some(self.application_list.applications.len() - 1));
+            self.application_list
+                .state
+                .select(Some(self.application_list.applications.len() - 1));
         }
         self.update_actions();
     }
 
     fn select_next_action(&mut self) {
-        let is_not_last_action = self.action_list.state.selected() != Some(self.action_list.actions.len() - 1);
+        let is_not_last_action =
+            self.action_list.state.selected() != Some(self.action_list.actions.len() - 1);
         if is_not_last_action {
             self.action_list.state.select_next();
         } else {
@@ -150,7 +153,9 @@ impl App {
         if is_not_first_action {
             self.action_list.state.select_previous();
         } else {
-            self.action_list.state.select(Some(self.action_list.actions.len() - 1));
+            self.action_list
+                .state
+                .select(Some(self.action_list.actions.len() - 1));
         }
     }
 
@@ -207,9 +212,7 @@ impl App {
         let filtered_apps: Vec<Application> = self
             .original_list
             .iter()
-            .filter(|app| {
-                app.name.to_lowercase().contains(&self.input.to_lowercase())
-            })
+            .filter(|app| app.name.to_lowercase().contains(&self.input.to_lowercase()))
             .cloned()
             .collect();
         if filtered_apps.is_empty() {
@@ -221,23 +224,22 @@ impl App {
                 terminal: false,
                 actions: vec![Action {
                     name: "Try typing something else".to_string(),
-                    command: "Or exit the application".to_string(), 
+                    command: "Or exit the application".to_string(),
                 }],
                 categories: vec![],
             };
             self.application_list.applications = vec![temp_app];
             self.application_list.state.select(Some(0));
             self.update_actions();
-            
+
             return;
         }
         self.application_list.applications = filtered_apps;
         self.application_list.state.select(Some(0));
         self.update_actions();
-
     }
 
-    fn run_action(&self) {
+    fn run_action(&self) -> Result<()> {
         let selected_index = self.application_list.state.selected().unwrap_or(0);
         let selected_action_index = self.action_list.state.selected().unwrap_or(0);
 
@@ -247,23 +249,32 @@ impl App {
 
         let is_terminal = self.application_list.applications[selected_index].terminal;
 
-        spawn_app(command, is_terminal, &self.config);
-
-        exit(0);
+        spawn_app(command, is_terminal, &self.config)
     }
 
-    fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
+    fn run(mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
         loop {
             // terminal.draw(|frame| self.draw(frame))?;
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Event::Key(key) = event::read()? {
                 match key.code {
+                    KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        terminal.clear()?;
+                        return Ok(());
+                    }
                     KeyCode::Char(to_insert) => self.enter_char(to_insert),
                     KeyCode::Backspace => self.delete_char(),
                     KeyCode::Left => self.move_cursor_left(),
                     KeyCode::Right => self.move_cursor_right(),
-                    KeyCode::Esc => return Ok(()),
-                    KeyCode::Enter => self.run_action(),
+                    KeyCode::Esc => {
+                        terminal.clear()?;
+                        return Ok(());
+                    }
+                    KeyCode::Enter => {
+                        self.run_action()?;
+                        terminal.clear()?;
+                        return Ok(());
+                    }
                     KeyCode::Up => self.select_previous_app(),
                     KeyCode::Down => self.select_next_app(),
                     KeyCode::Tab => self.select_next_action(),
@@ -299,13 +310,15 @@ impl App {
         // Tab, Shift+Tab to navigate actions
         // Enter to run action
         // Esc to exit
-        Paragraph::new("↑↓ to navigate apps | Tab to navigate actions | Enter to run action | Esc to exit")
-            .block(
-                Block::bordered()
-                    .title("Controls")
-                    .border_type(BorderType::Rounded),
-            )
-            .render(footer_area, buf);
+        Paragraph::new(
+            "↑↓ to navigate apps | Tab to navigate actions | Enter to run action | Esc to exit",
+        )
+        .block(
+            Block::bordered()
+                .title("Controls")
+                .border_type(BorderType::Rounded),
+        )
+        .render(footer_area, buf);
     }
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
@@ -348,7 +361,6 @@ impl App {
         action_area: Rect,
         buf: &mut Buffer,
     ) -> () {
-
         let info = if let Some(i) = self.application_list.state.selected() {
             self.application_list.applications[i].clone()
         } else {
@@ -446,8 +458,8 @@ impl App {
 
 pub fn startup(config_path: Option<String>) -> Result<()> {
     color_eyre::install()?;
-    let terminal = ratatui::init();
-    let app_result = App::new(config_path).run(terminal);
+    let mut terminal: Terminal<CrosstermBackend<std::io::Stdout>> = ratatui::init();
+    let app_result = App::new(config_path).run(&mut terminal);
     ratatui::restore();
     app_result
 }

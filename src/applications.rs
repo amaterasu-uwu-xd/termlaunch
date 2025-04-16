@@ -1,9 +1,11 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Stdio};
 
+use color_eyre::eyre::Error;
 use freedesktop_file_parser::{EntryType, parse};
 use freedesktop_icons::lookup;
 
-use fork::{daemon, Fork};
+use fork::daemon;
+use fork::Fork;
 use std::process::Command;
 
 use crate::config;
@@ -138,7 +140,7 @@ pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
         .find()
 }
 
-pub fn spawn_app(command: String, terminal: bool, config: &config::Config) {
+pub fn spawn_app(command: String, terminal: bool, config: &config::Config) -> Result<(), Error> {
     // Split the command into arguments, if it contains spaces, except if its in quotes
     let mut args = Vec::new();
     let mut current_arg = String::new();
@@ -190,9 +192,14 @@ pub fn spawn_app(command: String, terminal: bool, config: &config::Config) {
     }
 
     if let Ok(Fork::Child) = daemon(false, false) {
-        _ = command_builder
+        let _ = command_builder
             .current_dir(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
-            .spawn();
-    }
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .output()
+            .expect("Failed to execute command");
 
+    }
+    Ok(())
 }
