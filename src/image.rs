@@ -1,6 +1,4 @@
-use resvg::render;
-use usvg::{Options, Transform, Tree};
-use tiny_skia::Pixmap;
+use resvg::{render, usvg::{Options, Transform, Tree}, tiny_skia::Pixmap};
 use image::{DynamicImage, ImageBuffer, ImageReader};
 use std::{fs, path::PathBuf};
 

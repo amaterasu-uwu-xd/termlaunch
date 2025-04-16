@@ -12,7 +12,6 @@ repository = "https://github.com/amaterasu-uwu-xd/termrun"
 clap = { version = "4.5.35", features = ["derive"] }
 color-eyre = "0.6.3"
 crossterm = "0.28.1"
-fork = "0.2.0"
 freedesktop-file-parser = "0.1.3"
 freedesktop-icons = "0.3.1"
 fs4 = "0.13.1"
@@ -20,8 +19,6 @@ image = "0.25.6"
 ratatui = { version = "0.29.0", features = ["serde"] }
 ratatui-image = "5.0.0"
 resvg = "0.45.0"
+rustix = { version = "1.0.5", features = ["process"] }
 serde = "1.0.219"
-serde_toml = "0.0.1"
-tiny-skia = "0.11.4"
 toml = "0.8.20"
-usvg = "0.45.0"

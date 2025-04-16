@@ -1,11 +1,9 @@
-use std::{path::PathBuf, process::Stdio};
+use std::{os::unix::process::CommandExt, path::PathBuf, process::Stdio};
 
 use color_eyre::eyre::Error;
 use freedesktop_file_parser::{EntryType, parse};
 use freedesktop_icons::lookup;
 
-use fork::daemon;
-use fork::Fork;
 use std::process::Command;
 
 use crate::config;
@@ -191,15 +189,20 @@ pub fn spawn_app(command: String, terminal: bool, config: &config::Config) -> Re
         command_builder.arg(arg);
     }
 
-    if let Ok(Fork::Child) = daemon(false, false) {
-        let _ = command_builder
+    unsafe {
+        command_builder
             .current_dir(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .output()
-            .expect("Failed to execute command");
-
+            .pre_exec(|| {
+                rustix::process::setsid().ok();
+                Ok(())
+            });
     }
+
+    let _ = command_builder
+        .spawn();
+
     Ok(())
 }
