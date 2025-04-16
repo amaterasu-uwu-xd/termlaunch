@@ -32,7 +32,7 @@ pub fn load_config(path: Option<String>) -> Config {
         _none => {
             let home = std::env::var("HOME").unwrap();
             let xdg_config_home = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-            format!("{}/termrun/config.toml", xdg_config_home)
+            format!("{}/termlaunch/config.toml", xdg_config_home)
         }
     };
 

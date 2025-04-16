@@ -23,7 +23,7 @@ https://github.com/user-attachments/assets/8fbf3679-7065-43a9-8809-ce434fd53846
 You can install it using cargo, the Rust package manager. You can install it with the following command:
 
 ```bash
-cargo install --git https://github.com/amaterasu-uwu-xd/termrun
+cargo install --git https://github.com/amaterasu-uwu-xd/termlaunch
 ```
 
 Make sure you have `$HOME/.cargo/bin` in your `$PATH`. 
@@ -33,12 +33,13 @@ Make sure you have `$HOME/.cargo/bin` in your `$PATH`.
 You can clone the repository using the following command:    
 ```bash
 cd ~/Downloads
-git clone https://github.com/amaterasu-uwu-xd/termrun
-cd termrun
+git clone https://github.com/amaterasu-uwu-xd/termlaunch
+cd termlaunch
+# Make sure you have Rust and Cargo installed, if not, you can install it using rustup
 cargo build --release
 ```
 
-This will create a binary in `target/release/termrun`. You can copy it to your `$PATH` or run it directly from the build folder.
+This will create a binary in `target/release/`. You can copy it to your `$PATH` or run it directly from the build folder.
 
 ## Integration with WM
 The integration is very simple, you just need to add a keybinding to your window manager. Optionally, you can add some window rules.
@@ -56,7 +57,7 @@ windowrule = stayfocused, class:(termrun)
 ```
 
 ## Configuration
-The configuration file is located in `$XDG_CONFIG_HOME/termrun/config.toml` or `$HOME/.config/termrun/config.toml`. You can also use the `--config` flag to specify a different configuration file.
+The configuration file is located in `$XDG_CONFIG_HOME/termlaunch/config.toml` or `$HOME/.config/termlaunch/config.toml`. You can also use the `--config` flag to specify a different configuration file.
 
 ### Example configuration
 ```toml

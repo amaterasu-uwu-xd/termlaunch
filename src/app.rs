@@ -368,7 +368,7 @@ impl App {
             );
             no_icon.render(icon_area, buf);
         } else {
-            let picker = Picker::from_query_stdio().unwrap();
+            let picker = Picker::from_query_stdio().unwrap_or(Picker::from_fontsize((7, 14)));
             let dyn_img = get_image(icon_path.clone());
             let mut img = picker.new_resize_protocol(dyn_img.unwrap());
             Block::new()
