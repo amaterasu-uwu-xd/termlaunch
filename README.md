@@ -6,21 +6,34 @@ https://github.com/user-attachments/assets/8fbf3679-7065-43a9-8809-ce434fd53846
 
 ## Features
 - Launch applications or some of its actions
+- Search
 - Icon preview support
 - Customizable (WIP)
-- Search (WIP)
   
 ## Limitations
-- The search is not working yet
-- Some arguments for FreeDesktop applications are not supported yet
-- The actions are not working yet, only the default action is supported
 - Some desktop entries could break the application
 - If you have not configured a terminal emulator, it will use `kitty` as default
 
 ## Installation
 
+### Using precompiled binaries
+
+From the [releases section](https://github.com/amaterasu-uwu-xd/termlaunch/releases), you can download the latest release available.
+
+Download the binary for your architecture and place it in your `$PATH`. Make sure to give it execute permissions:
+
+```bash
+chmod +x /path/to/termlaunch
+```
+
 ### Using cargo
 You can install it using cargo, the Rust package manager. You can install it with the following command:
+
+```bash
+cargo install termlaunch
+```
+
+Or you can follow the latest commit in the repository:
 
 ```bash
 cargo install --git https://github.com/amaterasu-uwu-xd/termlaunch
@@ -29,8 +42,8 @@ cargo install --git https://github.com/amaterasu-uwu-xd/termlaunch
 Make sure you have `$HOME/.cargo/bin` in your `$PATH`. 
 
 
-### Cloning the repository
-You can clone the repository using the following command:    
+## Building from source
+If you want to build it from source, you can clone the repository and build it using cargo. Make sure you have Rust and Cargo installed. You can install them using [rustup](https://rustup.rs/). Requires `1.85.0` or higher.
 ```bash
 cd ~/Downloads
 git clone https://github.com/amaterasu-uwu-xd/termlaunch
