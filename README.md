@@ -20,11 +20,48 @@ https://github.com/user-attachments/assets/8fbf3679-7065-43a9-8809-ce434fd53846
 
 From the [releases section](https://github.com/amaterasu-uwu-xd/termlaunch/releases), you can download the latest release available.
 
-Download the binary for your architecture and place it in your `$PATH`. Make sure to give it execute permissions:
+The binaries and packages are available for `x86_64` and `aarch64` architectures. If you are using a different architecture, you should build it from source or use the cargo installation method.
 
+#### With your package manager
+You can install them using your package manager. Download the package for your architecture (`x86_64` or `aarch64` are available) and install it using your package manager:
+
+```bash
+# Debian/Ubuntu and derivatives
+sudo apt install ./termlaunch_<version>_Linux_<arch>.deb
+
+# Arch
+sudo pacman -U ./termlaunch_<version>_Linux_<arch>.pkg.tar.zst
+
+# Fedora - Also should works for other RPM-based distros
+sudo dnf install ./termlaunch_<version>_Linux_<arch>.rpm
+
+# Alpine
+sudo apk add ./termlaunch_<version>_Linux_<arch>.apk
+``` 
+
+#### Manually
+Download the `tar.gz` file for your architecture and extract it. You can use the following command:
+```bash
+tar -xvf termlaunch_<version>_Linux_<arch>.tar.gz
+```
+Make sure to replace `<version>` and `<arch>` with the version and architecture you downloaded.
+
+Also, make sure to give the binary executable permissions:
 ```bash
 chmod +x /path/to/termlaunch
 ```
+
+You can move it to `/usr/bin` or `/usr/local/bin` to make it available system-wide:
+```bash
+sudo mv /path/to/termlaunch /usr/bin/termlaunch
+```
+
+Or you can run it directly from the extracted folder:
+```bash
+/path/to/termlaunch/termlaunch
+```
+
+> Note: The binary is statically linked, so it should work on any distribution. If you have issues, please open an issue in the repository.
 
 ### Using cargo
 You can install it using cargo, the Rust package manager. You can install it with the following command:

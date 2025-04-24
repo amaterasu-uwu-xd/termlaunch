@@ -2,7 +2,7 @@
 name = "termlaunch"
 version = "0.1.2"
 edition = "2024"
-license-file = "LICENSE"
+license = "MIT"
 description = "[WIP] Launch your desktop applications through a terminal emulator"
 categories = ["command-line-utilities"]
 keywords = ["terminal", "desktop", "application", "launcher"]
