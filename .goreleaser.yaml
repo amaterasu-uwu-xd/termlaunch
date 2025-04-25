@@ -58,16 +58,19 @@ nfpms:
     homepage: https://github.com/amaterasu-uwu-xd/termlaunch
     maintainer: あまてらすちゃん <amaterasu.uwu.xd@outlook.com>
     description: Launch your desktop applications through a terminal emulator
+    license: MIT
     formats:
       - apk
       - deb
       - rpm
-      - termux.deb
       - archlinux
     dependencies:
       - hicolor-icon-theme
     recommends:
       - kitty
+    
+    archlinux:
+      packager: あまてらすちゃん <amaterasu.uwu.xd@outlook.com>
   
 binary_signs:
   - {}
