@@ -5,7 +5,7 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode},
     layout::{Constraint, Layout, Rect},
     prelude::CrosstermBackend,
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
     widgets::{
         Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
@@ -101,7 +101,9 @@ impl App {
                     state
                 },
             },
-            config: load_config(config_path),
+            config: load_config(config_path).unwrap_or_else(|_| {
+                panic!("Failed to load config");
+            }),
         }
     }
 
@@ -287,9 +289,11 @@ impl App {
 
     fn render_header(&self, header_area: Rect, buf: &mut Buffer) {
         Paragraph::new(self.input.as_str())
+            .fg(self.config.appearance.search_input)
             .block(
                 Block::bordered()
                     .title("Search")
+                    .fg(self.config.appearance.search_border)
                     .border_type(BorderType::Rounded),
             )
             .render(header_area, buf);
@@ -301,21 +305,21 @@ impl App {
                 .nth(self.character_index)
                 .unwrap_or(' ')
                 .to_string(),
-            Style::default().bg(Color::Blue).fg(Color::White),
+            Style::default()
+                .bg(self.config.appearance.search_input)
+                .fg(Color::White),
         );
     }
 
     fn render_footer(&self, footer_area: Rect, buf: &mut Buffer) {
-        // ↑ ↓ to navigate
-        // Tab, Shift+Tab to navigate actions
-        // Enter to run action
-        // Esc to exit
         Paragraph::new(
             "↑↓ to navigate apps | Tab to navigate actions | Enter to run action | Esc to exit",
         )
+        .fg(self.config.appearance.help_text)
         .block(
             Block::bordered()
                 .title("Controls")
+                .fg(self.config.appearance.help_border)
                 .border_type(BorderType::Rounded),
         )
         .render(footer_area, buf);
@@ -325,7 +329,8 @@ impl App {
         let block = Block::new()
             .title("Applications")
             .border_type(BorderType::Rounded)
-            .borders(ratatui::widgets::Borders::ALL);
+            .borders(ratatui::widgets::Borders::ALL)
+            .fg(self.config.appearance.applications_border);
         let items: Vec<ListItem> = self
             .application_list
             .applications
@@ -335,12 +340,12 @@ impl App {
                     Line::from(Span::styled(
                         app.name.clone(),
                         Style::default()
-                            .fg(Color::White)
+                            .fg(self.config.appearance.text)
                             .add_modifier(Modifier::BOLD),
                     )),
                     Line::from(Span::styled(
                         app.comment.clone(),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(self.config.appearance.subtext),
                     )),
                 ]);
                 ListItem::new(text)
@@ -348,7 +353,11 @@ impl App {
             .collect();
         let final_list = List::new(items)
             .block(block)
-            .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
+            .highlight_style(
+                Style::default()
+                    .bg(self.config.appearance.selected_app)
+                    .fg(self.config.appearance.selected_app_text),
+            )
             .highlight_symbol(">> ")
             .highlight_spacing(HighlightSpacing::WhenSelected);
         StatefulWidget::render(final_list, area, buf, &mut self.application_list.state);
@@ -360,7 +369,7 @@ impl App {
         about_area: Rect,
         action_area: Rect,
         buf: &mut Buffer,
-    ) -> () {
+    ) {
         let info = if let Some(i) = self.application_list.state.selected() {
             self.application_list.applications[i].clone()
         } else {
@@ -376,6 +385,7 @@ impl App {
             let no_icon = Paragraph::new(text).block(
                 Block::bordered()
                     .title("Icon")
+                    .fg(self.config.appearance.icon_border)
                     .border_type(BorderType::Rounded),
             );
             no_icon.render(icon_area, buf);
@@ -387,6 +397,7 @@ impl App {
                 .title("Icon")
                 .border_type(BorderType::Rounded)
                 .borders(ratatui::widgets::Borders::ALL)
+                .fg(self.config.appearance.icon_border)
                 .render(icon_area, buf);
             StatefulWidget::render(
                 StatefulImage::default(),
@@ -404,21 +415,22 @@ impl App {
             Line::from(Span::styled(
                 info.name.clone(),
                 Style::default()
-                    .fg(Color::White)
+                    .fg(self.config.appearance.text)
                     .add_modifier(Modifier::BOLD),
             )),
             Line::from(Span::styled(
                 info.comment.clone(),
-                Style::default().fg(Color::Gray),
+                Style::default().fg(self.config.appearance.subtext),
             )),
             Line::from(Span::styled(
                 info.categories.join(", "),
-                Style::default().fg(Color::Gray),
+                Style::default().fg(self.config.appearance.subtext),
             )),
         ]);
         let selected_item = Paragraph::new(text).block(
             Block::bordered()
                 .title("Info")
+                .fg(self.config.appearance.info_border)
                 .border_type(BorderType::Rounded),
         );
         selected_item.render(about_area, buf);
@@ -436,12 +448,12 @@ impl App {
                     Line::from(Span::styled(
                         action.name.clone(),
                         Style::default()
-                            .fg(Color::White)
+                            .fg(self.config.appearance.text)
                             .add_modifier(Modifier::BOLD),
                     )),
                     Line::from(Span::styled(
                         action.command.clone(),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(self.config.appearance.subtext),
                     )),
                 ]);
                 ListItem::new(text)
@@ -449,7 +461,12 @@ impl App {
             .collect();
         let final_list = List::new(items)
             .block(block)
-            .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
+            .fg(self.config.appearance.actions_border)
+            .highlight_style(
+                Style::default()
+                    .bg(self.config.appearance.selected_app)
+                    .fg(Color::Black),
+            )
             .highlight_symbol(">> ")
             .highlight_spacing(HighlightSpacing::WhenSelected);
         StatefulWidget::render(final_list, action_area, buf, &mut self.action_list.state);

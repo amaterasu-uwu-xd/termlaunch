@@ -52,76 +52,70 @@ pub fn get_apps() -> Vec<Application> {
 
     // Order the applications by name, case insensitive
     apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-    return apps;
+    apps
 }
 
 fn get_desktop_entries(is_user: bool, path: String, apps: &mut Vec<Application>) {
     // Check the applications directory
     let app_dir = format!("{}/applications", path);
     if let Ok(entries) = std::fs::read_dir(app_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                if entry
-                    .path()
-                    .extension()
-                    .map(|s| s == "desktop")
-                    .unwrap_or(false)
-                {
-                    // Get the text of the file
-                    let file_content = std::fs::read_to_string(entry.path())
-                        .unwrap_or_else(|_| "".to_string());
-                    // Parse the file
-                    let parsed = parse(&file_content);
+        for entry in entries.flatten() {
+            if entry
+                .path()
+                .extension()
+                .map(|s| s == "desktop")
+                .unwrap_or(false)
+            {
+                // Get the text of the file
+                let file_content =
+                    std::fs::read_to_string(entry.path()).unwrap_or_else(|_| "".to_string());
+                // Parse the file
+                let parsed = parse(&file_content);
 
-                    if parsed.is_err() {
+                if parsed.is_err() {
+                    continue;
+                }
+                let parsed = parsed.unwrap();
+
+                if let EntryType::Application(app) = &parsed.entry.entry_type {
+                    if parsed.entry.no_display.unwrap_or(false) {
                         continue;
+                    };
+                    let mut actions = Vec::new();
+
+                    if let Some(exec) = &app.exec {
+                        actions.push(Action {
+                            name: "Run".to_string(),
+                            command: exec.to_string(),
+                        });
                     }
-                    let parsed = parsed.unwrap();
 
-                    if let EntryType::Application(app) = &parsed.entry.entry_type {
-                        if parsed.entry.no_display.unwrap_or(false) == true {
-                            continue
-                        };
-                        let mut actions = Vec::new();
+                    for (_name, action) in parsed.actions {
+                        actions.push(Action {
+                            name: action.name.default,
+                            command: action.exec.unwrap(),
+                        });
+                    }
 
-                        if let Some(exec) = &app.exec {
-                            actions.push(Action {
-                                name: "Run".to_string(),
-                                command: exec.to_string()
-                            });
-                        }
-
-                        for (_name,action)  in parsed.actions {
-                            actions.push(Action {
-                                name: action.name.default,
-                                command: action.exec.unwrap()
-                            });
-                        }
-
-                        let app = Application {
-                            entry: entry.file_name()
-                                .to_str()
-                                .unwrap_or("")
-                                .to_string(),
-                            name: parsed.entry.name.default,
-                            icon: parsed.entry.icon.unwrap_or_default().content,
-                            terminal: app.terminal.unwrap_or(false),
-                            comment: parsed.entry.comment.unwrap_or_default().default,
-                            categories: app.categories.clone().unwrap_or_default(),
-                            actions: actions
-                        };
-                        // if the entry is user, first check if it already exists in the entries, if it does, replace it, if not, push it
-                        if is_user {
-                            if let Some(index) = apps.iter().position(|x| x.entry == app.entry) {
-                                apps[index] = app;
-                            } else {
-                                apps.push(app);
-                            }
+                    let app = Application {
+                        entry: entry.file_name().to_str().unwrap_or("").to_string(),
+                        name: parsed.entry.name.default,
+                        icon: parsed.entry.icon.unwrap_or_default().content,
+                        terminal: app.terminal.unwrap_or(false),
+                        comment: parsed.entry.comment.unwrap_or_default().default,
+                        categories: app.categories.clone().unwrap_or_default(),
+                        actions,
+                    };
+                    // if the entry is user, first check if it already exists in the entries, if it does, replace it, if not, push it
+                    if is_user {
+                        if let Some(index) = apps.iter().position(|x| x.entry == app.entry) {
+                            apps[index] = app;
                         } else {
-                            // if the entry is system, just push it
                             apps.push(app);
                         }
-
+                    } else {
+                        // if the entry is system, just push it
+                        apps.push(app);
                     }
                 }
             }
@@ -129,9 +123,7 @@ fn get_desktop_entries(is_user: bool, path: String, apps: &mut Vec<Application>)
     }
 }
 
-
-pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf>
-{
+pub fn get_app_icon(name: String, config: &config::Config) -> Option<PathBuf> {
     lookup(name.as_str())
         .with_size(1024)
         .with_theme(&config.icon_theme)
@@ -201,8 +193,7 @@ pub fn spawn_app(command: String, terminal: bool, config: &config::Config) -> Re
             });
     }
 
-    let _ = command_builder
-        .spawn();
+    let _ = command_builder.spawn();
 
     Ok(())
 }

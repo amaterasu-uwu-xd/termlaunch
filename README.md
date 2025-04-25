@@ -111,7 +111,21 @@ The configuration file is located in `$XDG_CONFIG_HOME/termlaunch/config.toml` o
 
 ### Example configuration
 ```toml
-# Actually only the terminal emulator and the icon theme are supported
+icon_theme = "Papirus-Dark"
 terminal = "kitty"
-icon_theme = "Papirus"
+
+# Lot of colors
+[appearance]
+search_input = "#f9e2af"
+search_border = "#cba6f7"
+text = "#f2cdcd"
+subtext = "#f5e0dc"
+help_text = "#ff5555"
+selected_app = "#74c7ec"
+selected_app_text = "#11111b"
+applications_border = "#a6e3a1"
+icon_border = "#55eebb"
+info_border = "#89dceb"
+actions_border = "#89b4fa"
+help_border = "#000000"
 ```

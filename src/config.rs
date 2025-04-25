@@ -1,58 +1,118 @@
-use serde::Deserialize;
+use core::str;
+use std::str::FromStr;
+use std::fs;
+use std::path::Path;
+use std::env;
+use toml::de::Error as TomlError;
 
+use serde::Deserialize;
+use ratatui::style::Color;
 
 /// Config struct for the application
 /// This struct is used to load the config from the config file
-#[derive(Deserialize, Debug)]
-pub struct SerializeConfig {
-    pub background_color: Option<String>,
-    pub text_color: Option<String>,
-    pub border_color: Option<String>,
-    pub accent_color: Option<String>,
-    pub icon_theme: Option<String>,
-    pub terminal: Option<String>,
+#[derive(Deserialize, Debug, Clone)]
+struct SerializeConfig {
+    icon_theme: Option<String>,
+    terminal: Option<String>,
+    appearance: Option<SerializeAppearance>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct SerializeAppearance {
+    search_input: Option<String>,
+    text: Option<String>,
+    subtext: Option<String>,
+    help_text: Option<String>,
+    selected_app: Option<String>,
+    selected_app_text: Option<String>,
+    search_border: Option<String>,
+    applications_border: Option<String>,
+    icon_border: Option<String>,
+    info_border: Option<String>,
+    actions_border: Option<String>,
+    help_border: Option<String>,
 }
 
 /// Config struct for the application.
 /// This struct is used for the rest of the application
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Config {
-    pub background_color: String,
-    pub text_color: String,
-    pub border_color: String,
-    pub accent_color: String,
     pub icon_theme: String,
     pub terminal: String,
+    pub appearance: Appearance,
 }
 
-// Opem the config file from $HOME/.config/termrun/config.toml or $XDG_CONFIG_HOME/termrun/config.toml
-pub fn load_config(path: Option<String>) -> Config {
-    let config_path = match path {
-        Some(p) => p.to_string(),
-        _none => {
-            let home = std::env::var("HOME").unwrap();
-            let xdg_config_home = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-            format!("{}/termlaunch/config.toml", xdg_config_home)
-        }
-    };
+#[derive(Clone)]
+pub struct Appearance {
+    pub search_input: Color,
+    pub text: Color,
+    pub subtext: Color,
+    pub help_text: Color,
+    pub selected_app: Color,
+    pub selected_app_text: Color,
+    pub search_border: Color,
+    pub applications_border: Color,
+    pub icon_border: Color,
+    pub info_border: Color,
+    pub actions_border: Color,
+    pub help_border: Color,
+}
 
-    let mut config_str = String::new();
+pub fn load_config(path: Option<String>) -> Result<Config, String> {
+    let config_path = resolve_config_path(path)?;
+    let config_str = read_config_file(&config_path)?;
+    let imported_conf: SerializeConfig = parse_config(&config_str)?;
 
-    // Check if the config file exists
-    if std::path::Path::new(&config_path).exists() {
-        config_str = std::fs::read_to_string(config_path).unwrap();
+    Ok(Config {
+        icon_theme: imported_conf.icon_theme.unwrap_or_else(|| "hicolor".to_string()),
+        terminal: imported_conf.terminal.unwrap_or_else(|| "kitty".to_string()),
+        appearance: Appearance {
+            search_input: parse_color(imported_conf.appearance.clone().and_then(|a| a.search_input), Color::White),
+            text: parse_color(imported_conf.appearance.clone().and_then(|a| a.text), Color::White),
+            subtext: parse_color(imported_conf.appearance.clone().and_then(|a| a.subtext), Color::Gray),
+            help_text: parse_color(imported_conf.appearance.clone().and_then(|a| a.help_text), Color::Gray),
+            selected_app: parse_color(imported_conf.appearance.clone().and_then(|a| a.selected_app), Color::Blue),
+            selected_app_text: parse_color(imported_conf.appearance.clone().and_then(|a| a.selected_app_text), Color::Black),
+            search_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.search_border), Color::Gray),
+            applications_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.applications_border), Color::Gray),
+            icon_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.icon_border), Color::Gray),
+            info_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.info_border), Color::White),
+            actions_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.actions_border), Color::White),
+            help_border: parse_color(imported_conf.appearance.clone().and_then(|a| a.help_border), Color::White),
+        },
+    })
+}
+
+fn resolve_config_path(path: Option<String>) -> Result<String, String> {
+    if let Some(p) = path {
+        return Ok(p);
     }
 
-    let imported_conf: SerializeConfig= toml::de::from_str(&config_str).unwrap();
+    let home = env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())?;
+    let xdg_config_home = env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
+    Ok(format!("{}/termlaunch/config.toml", xdg_config_home))
+}
 
-    let config = Config {
-        background_color: imported_conf.background_color.unwrap_or("#000000".to_string()),
-        text_color: imported_conf.text_color.unwrap_or("#FFFFFF".to_string()),
-        border_color: imported_conf.border_color.unwrap_or("#FFFFFF".to_string()),
-        accent_color: imported_conf.accent_color.unwrap_or("#FF0000".to_string()),
-        icon_theme: imported_conf.icon_theme.unwrap_or("hicolor".to_string()),
-        terminal: imported_conf.terminal.unwrap_or("kitty".to_string()),
-    };
-    
-    config
+fn read_config_file(path: &str) -> Result<String, String> {
+    if Path::new(path).exists() {
+        fs::read_to_string(path).map_err(|e| format!("Failed to read config file: {}", e))
+    } else {
+        Err(format!("Config file not found at path: {}", path))
+    }
+}
+
+fn parse_config(config_str: &str) -> Result<SerializeConfig, String> {
+    toml::from_str(config_str).map_err(|e: TomlError| format!("Failed to parse config file: {}", e))
+}
+
+fn parse_color(color: Option<String>, default: Color) -> Color {
+    color
+        .filter(|c| is_valid_color(c))
+        .and_then(|c| Color::from_str(&c).ok())
+        .unwrap_or(default)
+}
+
+
+fn is_valid_color(color: &str) -> bool {
+    color.len() == 7 && color.starts_with('#') && color.chars().skip(1).all(|c| c.is_ascii_hexdigit())
 }
