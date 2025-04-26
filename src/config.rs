@@ -60,6 +60,28 @@ pub struct Appearance {
 
 pub fn load_config(path: Option<String>) -> Result<Config, String> {
     let config_path = resolve_config_path(path)?;
+
+    if !Path::new(&config_path).exists() {
+        return Ok(Config {
+            icon_theme: "hicolor".to_string(),
+            terminal: "kitty".to_string(),
+            appearance: Appearance {
+                search_input: Color::White,
+                text: Color::White,
+                subtext: Color::Gray,
+                help_text: Color::Gray,
+                selected_app: Color::Blue,
+                selected_app_text: Color::Black,
+                search_border: Color::Gray,
+                applications_border: Color::Gray,
+                icon_border: Color::Gray,
+                info_border: Color::White,
+                actions_border: Color::White,
+                help_border: Color::White,
+            }
+        })
+    }
+    
     let config_str = read_config_file(&config_path)?;
     let imported_conf: SerializeConfig = parse_config(&config_str)?;
 
