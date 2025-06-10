@@ -21,3 +21,13 @@ resvg = "0.45.1"
 rustix = { version = "1.0.5", features = ["process"] }
 serde = "1.0.219"
 toml = "0.8.21"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+opt-level = "z"  # Optimize for size.
+lto = true
+incremental = true  # Improves re-compile times
+codegen-units = 1
+debug = "full"
+panic = "abort"
+
