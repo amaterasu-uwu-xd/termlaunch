@@ -4,15 +4,10 @@ This is a very WIP project that allows you to launch your desktop applications t
 
 https://github.com/user-attachments/assets/8fbf3679-7065-43a9-8809-ce434fd53846
 
-## Features
-- Launch applications or some of its actions
-- Search
-- Icon preview support
-- Customizable (WIP)
-  
+
 ## Limitations
-- Some desktop entries could break the application
-- If you have not configured a terminal emulator, it will use `kitty` as default
+- If you have not configured a terminal emulator, it will try to use `kitty` as default.
+- At some point, i would like to add support for prefixing the launch command with some like `sudo`, `prime-run`, `uwsm`, etc by adding a list of prefixes in the config file.
 
 ## Installation
 
@@ -61,7 +56,7 @@ Or you can run it directly from the extracted folder:
 /path/to/termlaunch/termlaunch
 ```
 
-> Note: The binary is statically linked, so it should work on any distribution. If you have issues, please open an issue in the repository.
+> Note: The binary is statically linked, so it should work without any additional dependencies. If you have issues, please open an issue in the repository.
 
 ### Using cargo
 You can install it using cargo, the Rust package manager. You can install it with the following command:
@@ -79,7 +74,7 @@ cargo install --git https://github.com/amaterasu-uwu-xd/termlaunch
 Make sure you have `$HOME/.cargo/bin` in your `$PATH`. 
 
 
-## Building from source
+### Building from source
 If you want to build it from source, you can clone the repository and build it using cargo. Make sure you have Rust and Cargo installed. You can install them using [rustup](https://rustup.rs/). Requires `1.85.0` or higher.
 ```bash
 cd ~/Downloads
@@ -98,12 +93,27 @@ This is an example for Hyprland:
 
 ```hyprlang
 # This bind uses $terminal as the terminal emulator, if you want to use another, you can replace it with your preferred terminal.
-bind = $mainMod, R, exec $terminal --class termrun -e /path/to/termrun
+bind = Alt, Space, exec $terminal --class termlaunch -e /path/to/termlaunch
 
 # Window rules
-windowrule = float, class:(termrun)
-windowrule = size 100x600, class:(termrun)
-windowrule = stayfocused, class:(termrun)
+windowrule = float, class:(termlaunch)
+windowrule = size 50% 50%, class:(termlaunch)
+windowrule = stayfocused, class:(termlaunch)
+```
+
+And for Niri:
+
+```kdl
+window-rule {
+    match app-id="termlaunch"
+    open-floating true
+    default-column-width { proportion 0.5; }
+    default-window-height { proportion 0.5; }
+}
+
+binds {
+    Alt+Space { spawn: "kitty" "--class" "termlaunch" "-e" "/path/to/termlaunch"; }
+}
 ```
 
 ## Configuration
