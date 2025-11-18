@@ -6,7 +6,7 @@ pub fn get_image(path: PathBuf) -> Result<DynamicImage, String> {
     
     // Check if the file exists
     if path.extension().unwrap_or_default() != "svg" {
-        let dyn_img = ImageReader::open(path.clone()).unwrap().decode().unwrap().resize_to_fill(254, 254, ratatui_image::FilterType::Triangle);
+        let dyn_img = ImageReader::open(path.clone()).unwrap().decode().unwrap();
         Ok(dyn_img)
     }
     else {
@@ -18,8 +18,8 @@ pub fn get_image(path: PathBuf) -> Result<DynamicImage, String> {
         let mut pixmap_mut = pixmap.as_mut();
 
         let target_size = 254;
-        let origiinal_size = tree.size();
-        let scale = target_size as f32 / origiinal_size.width().max(origiinal_size.height());
+        let original_size = tree.size();
+        let scale = target_size as f32 / original_size.width().max(original_size.height());
         let transform = Transform::from_scale(scale, scale);
 
         render(&tree, transform, &mut pixmap_mut);

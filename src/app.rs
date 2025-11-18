@@ -3,16 +3,16 @@ use ratatui::{
     Terminal,
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode},
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     prelude::CrosstermBackend,
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
     widgets::{
         Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
-        Widget,
+        Widget, Wrap,
     },
 };
-use ratatui_image::{StatefulImage, picker::Picker};
+use ratatui_image::{Resize, StatefulImage, picker::Picker};
 
 use crate::{
     applications::{self, Action, Application, get_app_icon, spawn_app},
@@ -49,10 +49,10 @@ impl Widget for &mut App {
         .areas(area);
 
         let [list_area, item_area] =
-            Layout::horizontal([Constraint::Fill(2), Constraint::Fill(1)]).areas(main_area);
+            Layout::horizontal([Constraint::Percentage(80), Constraint::Fill(1)]).areas(main_area);
 
         let [icon_area, about_area, action_area] = Layout::vertical([
-            Constraint::Percentage(40),
+            Constraint::Percentage(25),
             Constraint::Fill(1),
             Constraint::Fill(1),
         ])
@@ -194,7 +194,7 @@ impl App {
             .unwrap_or(self.input.len())
     }
 
-    pub fn update_input(&mut self, new_input: String) {
+    fn update_input(&mut self, new_input: String) {
         self.input = new_input;
         self.on_input_change();
     }
@@ -207,6 +207,43 @@ impl App {
         };
         self.action_list.actions = info.actions.clone();
         self.action_list.state.select(Some(0));
+    }
+
+    fn delete_word(&mut self) {
+        if self.character_index == 0 {
+            return;
+        }
+        let before_cursor: String = self.input.chars().take(self.character_index).collect();
+        let last_space_pos = before_cursor.rfind(' ').unwrap_or(0);
+        let new_input = before_cursor[..last_space_pos].to_string();
+        let after_cursor: String = self.input.chars().skip(self.character_index).collect();
+        let new_input = format!("{}{}", new_input, after_cursor);
+        self.update_input(new_input);
+        self.character_index = self.clamp_cursor(self.character_index);
+    }
+
+    fn move_cursor_word_left(&mut self) {
+        if self.character_index == 0 {
+            return;
+        }
+        let before_cursor: String = self.input.chars().take(self.character_index).collect();
+        let last_space_pos = before_cursor.rfind(' ').unwrap_or(0);
+        self.character_index = self.clamp_cursor(last_space_pos);
+    }
+
+    fn move_cursor_word_right(&mut self) {
+        if self.character_index >= self.input.chars().count() {
+            return;
+        }
+        // Find the position of the next space after the cursor
+        // If the position is a space, also move it to the next space
+        if self.input.chars().nth(self.character_index) == Some(' ') {
+            self.character_index += 1;
+        }
+        let after_cursor: String = self.input.chars().skip(self.character_index).collect();
+        let next_space_pos = after_cursor.find(' ').unwrap_or(after_cursor.len());
+        let new_cursor_pos = self.character_index + next_space_pos;
+        self.character_index = self.clamp_cursor(new_cursor_pos);
     }
 
     fn on_input_change(&mut self) {
@@ -260,10 +297,21 @@ impl App {
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                    KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                         terminal.clear()?;
                         return Ok(());
                     }
+                    KeyCode::Delete if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        self.delete_word()
+                    }
+                    KeyCode::Left if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        self.move_cursor_word_left()
+                    }
+                    KeyCode::Right if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        self.move_cursor_word_right()
+                    }
+                    KeyCode::Home => self.character_index = 0,
+                    KeyCode::End => self.character_index = self.input.chars().count(),
                     KeyCode::Char(to_insert) => self.enter_char(to_insert),
                     KeyCode::Backspace => self.delete_char(),
                     KeyCode::Left => self.move_cursor_left(),
@@ -285,6 +333,16 @@ impl App {
                 }
             }
         }
+    }
+
+    fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+        let [area] = Layout::vertical([vertical])
+            .flex(Flex::Center)
+            .areas(area);
+        let [area] = Layout::horizontal([horizontal])
+            .flex(Flex::Center)
+            .areas(area);
+        return area;
     }
 
     fn render_header(&self, header_area: Rect, buf: &mut Buffer) {
@@ -390,7 +448,8 @@ impl App {
             );
             no_icon.render(icon_area, buf);
         } else {
-            let picker = Picker::from_query_stdio().unwrap_or(Picker::from_fontsize((7, 14)));
+            let mut picker = Picker::from_query_stdio().unwrap();
+            picker.set_background_color([0, 0, 0, 0]);
             let dyn_img = get_image(icon_path.clone());
             let mut img = picker.new_resize_protocol(dyn_img.unwrap());
             Block::new()
@@ -400,39 +459,52 @@ impl App {
                 .fg(self.config.appearance.icon_border)
                 .render(icon_area, buf);
             StatefulWidget::render(
-                StatefulImage::default(),
+                StatefulImage::new().resize(Resize::Scale(None)),
                 Block::new()
                     .title("Icon")
                     .border_type(BorderType::Rounded)
                     .borders(ratatui::widgets::Borders::ALL)
-                    .inner(icon_area),
+                    .inner(Self::center(icon_area, Constraint::Percentage(90), Constraint::Percentage(90))),
                 buf,
                 &mut img,
             );
         }
 
-        let text = Text::from(vec![
-            Line::from(Span::styled(
-                info.name.clone(),
-                Style::default()
-                    .fg(self.config.appearance.text)
-                    .add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::styled(
-                info.comment.clone(),
-                Style::default().fg(self.config.appearance.subtext),
-            )),
-            Line::from(Span::styled(
-                info.categories.join(", "),
-                Style::default().fg(self.config.appearance.subtext),
-            )),
-        ]);
-        let selected_item = Paragraph::new(text).block(
-            Block::bordered()
-                .title("Info")
-                .fg(self.config.appearance.info_border)
-                .border_type(BorderType::Rounded),
-        );
+        let name_line = Line::from(Span::styled(
+            info.name.clone(),
+            Style::default()
+                .fg(self.config.appearance.text)
+                .add_modifier(Modifier::BOLD),
+        ));
+        let comment_line = Line::from(Span::styled(
+            if info.comment.is_empty() {
+                "No description available"
+            } else {
+                info.comment.as_str()
+            },
+            Style::default().fg(self.config.appearance.subtext),
+        ));
+        let categories_line = Line::from(Span::styled(
+            info.categories.join(", "),
+            Style::default().fg(self.config.appearance.subtext),
+        ));
+
+        let text = vec![
+            name_line,
+            Line::from("\n"),
+            comment_line,
+            Line::from("\n"),
+            categories_line,
+        ];
+
+        let selected_item = Paragraph::new(text)
+            .block(
+                Block::bordered()
+                    .title("Info")
+                    .fg(self.config.appearance.info_border)
+                    .border_type(BorderType::Rounded),
+            )
+            .wrap(Wrap { trim: true });
         selected_item.render(about_area, buf);
 
         let block = Block::new()

@@ -9,18 +9,18 @@ keywords = ["terminal", "desktop", "application", "launcher"]
 repository = "https://github.com/amaterasu-uwu-xd/termrun"
 
 [dependencies]
-clap = { version = "4.5.37", features = ["derive"] }
-color-eyre = "0.6.3"
-freedesktop-file-parser = "0.1.3"
+clap = { version = "4.5.52", features = ["derive"] }
+color-eyre = "0.6.5"
+freedesktop-file-parser = "0.3.1"
 freedesktop-icons = "0.4.0"
 fs4 = "0.13.1"
-image = "0.25.6"
+image = "0.25.9"
 ratatui = { version = "0.29.0", features = ["serde"] }
-ratatui-image = "5.0.0"
+ratatui-image = "8.0.2"
 resvg = "0.45.1"
-rustix = { version = "1.0.5", features = ["process"] }
-serde = "1.0.219"
-toml = "0.8.21"
+rustix = { version = "1.1.2", features = ["process"] }
+serde = "1.0.228"
+toml = "0.9.8"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
