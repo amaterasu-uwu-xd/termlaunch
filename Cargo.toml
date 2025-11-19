@@ -1,6 +1,6 @@
 [package]
 name = "termlaunch"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 license = "MIT"
 description = "[WIP] Launch your desktop applications through a terminal emulator"
