@@ -20,17 +20,14 @@ builds:
       - --release
     targets:
       - x86_64-unknown-linux-musl
+      - x86_64-unknown-linux-gnu
       - aarch64-unknown-linux-musl
+      - aarch64-unknown-linux-gnu
 
 archives:
   - formats: [ 'tar.gz' ]
     # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Target }}"
 
 changelog:
   sort: asc
@@ -52,14 +49,7 @@ nfpms:
   -
     id: package
     package_name: termlaunch
-    file_name_template: >-
-      {{- .ProjectName }}_
-      {{- .Major }}.{{ .Minor }}.{{.Patch}}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+    file_name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Target }}"
     vendor: あまてらすちゃん
     homepage: https://github.com/amaterasu-uwu-xd/termlaunch
     maintainer: あまてらすちゃん <amaterasu.uwu.xd@outlook.com>
